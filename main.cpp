@@ -1,41 +1,17 @@
 #include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 #include "character.hpp"
-class Character
-{
-public:
-    Character(const sf::Vector2f& pos) : pos(pos)
-    {
-        texture.loadFromFile("guy.png");
-        sprite = sf::Sprite( texture );
-    }
-    void  Draw( sf::RenderTarget& rt)
-    {
-        rt.draw(sprite);
-    }
-    void SetDirection( const sf::Vector2f& dir )
-    {
-        vel = dir * speed;
-    }
-    void Update( float dt)
-    {
-       pos += vel*dt;
-         sprite.setPosition(pos);
-    }
-private:
-    static constexpr float speed = 1.0f;
-    sf::Vector2f pos;
-    sf::Vector2f vel = {0.0f,0.0f};
-    sf::Texture texture;
-    sf::Sprite sprite;
-};
-
+#include <iostream>
 int main()
 {
+    //Loading and setting up textures
     sf::Texture texture_grass;
     if(!texture_grass.loadFromFile("grass.png")) { return 1; }
     texture_grass.setRepeated(true);
-
+    sf::Texture guy_texture;
+    if(!guy_texture.loadFromFile("guy.png")) {return 1;}
+    sf::Sprite guy;
+    guy.setTexture(guy_texture);
     sf::Sprite grass;
     grass.setTexture(texture_grass);
     grass.setScale(1, 1);
@@ -43,34 +19,41 @@ int main()
     sf::Texture texture_wall;
     if(!texture_wall.loadFromFile("wall.png")) { return 1; }
     texture_wall.setRepeated(true);
+    //Clock
+    float dt;
+    sf::Clock dt_clock;
+    //  Walls
+    std::vector<sf::RectangleShape> walls;
+    sf::RectangleShape wall;
+    wall.setTexture(&texture_wall);
+    wall.setSize(sf::Vector2f(100,300));
+    wall.setPosition(100,0);
 
-    sf::Sprite wall;
-    wall.setTexture(texture_wall);
-    wall.setScale(0.6, 0.6);
-    wall.setTextureRect(sf::IntRect(0, 0, 400, 100));
-    wall.setPosition(0,100);
-    sf::Sprite wall1;
-    wall1.setTexture(texture_wall);
-    wall1.setScale(0.6, 0.6);
-    wall1.setTextureRect(sf::IntRect(0, 0, 100, 400));
-    wall1.setPosition(200,100);
-    sf::Sprite wall2;
-    wall2.setTexture(texture_wall);
-    wall2.setScale(0.6, 0.6);
-    wall2.setTextureRect(sf::IntRect(0, 0, 100, 900));
-    wall2.setPosition(400,0);
-    sf::Sprite wall3;
-    wall3.setTexture(texture_wall);
-    wall3.setScale(0.6, 0.6);
-    wall3.setTextureRect(sf::IntRect(0, 0, 100, 400));
-    wall3.setPosition(200,100);
+    sf::RectangleShape wall1;
+    wall.setTexture(&texture_wall);
+    wall.setSize(sf::Vector2f(100,300));
+    wall.setPosition(300,0);
+
+
+    walls.push_back(wall);
+    walls.push_back(wall1);
+
+    sf::FloatRect nextPos;
+
     // Create the main window
     sf::RenderWindow window(sf::VideoMode(800, 600), "SFML window");
-    Character guy( { 100.0f,100.0f } );
+    window.setFramerateLimit(120);
+    sf::RectangleShape player;
+    player.setTexture(&guy_texture);
+    player.setSize(sf::Vector2f(43,69));
 
+
+    const float movementSpeed = 400.f;
+    sf::Vector2f velocity;
   // Start the game loop
     while (window.isOpen())
     {
+        dt = dt_clock.restart().asSeconds();
         // Process events
         sf::Event event;
         while (window.pollEvent(event))
@@ -78,41 +61,125 @@ int main()
             // Close window: exit
             if (event.type == sf::Event::Closed)
                 window.close();
-            // get dt
 
             //handle input
-            sf::Vector2f dir = {0.0f,0.0f};
+            velocity.x = 0.f;
+            velocity.y = 0.f;
             if(sf::Keyboard::isKeyPressed( sf::Keyboard::Up))
             {
-                dir.y -= 1.0f;
+                velocity.y += -movementSpeed * dt ;
             }
             if(sf::Keyboard::isKeyPressed( sf::Keyboard::Down))
             {
-                dir.y += 1.0f;
+                velocity.y += movementSpeed * dt ;
+
             }
             if(sf::Keyboard::isKeyPressed( sf::Keyboard::Left))
             {
-                dir.x -= 1.0f;
+                velocity.x += -movementSpeed * dt ;
+
             }
             if(sf::Keyboard::isKeyPressed( sf::Keyboard::Right))
             {
-                dir.x += 1.0f;
+                velocity.x += movementSpeed * dt ;
             }
-            guy.SetDirection(dir);
+
+            //colisions
+
+
+
+            for (auto &wall : walls)
+            {
+                sf::FloatRect playerBounds = player.getGlobalBounds();
+                sf::FloatRect wallBounds = wall.getGlobalBounds();
+
+                nextPos = playerBounds;
+                nextPos.left +=  velocity.x;
+                nextPos.top  +=  velocity.y;
+
+                if(wallBounds.intersects(nextPos))
+                {
+                    //Bottom collision
+                    if(playerBounds.top < wallBounds.top &&
+                            playerBounds.top + playerBounds.height < wallBounds.top + wallBounds.height &&
+                            playerBounds.left < wallBounds.left + wallBounds.width
+                            && playerBounds.left + playerBounds.width > wallBounds.left
+                            )
+                    {
+                        velocity.y =0.f;
+                        player.setPosition(wallBounds.left, wallBounds.top - playerBounds.height );
+
+                    }
+                    //Topcollision
+                    if(playerBounds.top > wallBounds.top &&
+                            playerBounds.top + playerBounds.height > wallBounds.top + wallBounds.height &&
+                            playerBounds.left < wallBounds.left + wallBounds.width
+                            && playerBounds.left + playerBounds.width > wallBounds.left
+                            )
+                    {
+                        velocity.y =0.f;
+                        player.setPosition(playerBounds.left, wallBounds.top + wallBounds.height );
+
+                    }
+                    //Right collision
+                    if(playerBounds.left < wallBounds.left &&
+                            playerBounds.left + playerBounds.width < wallBounds.left + wallBounds.width &&
+                            playerBounds.top < wallBounds.top + wallBounds.height
+                            && playerBounds.top + playerBounds.height > wallBounds.top
+                            )
+                    {
+                        velocity.x =0.f;
+                        player.setPosition(wallBounds.left - playerBounds.width, playerBounds.top);
+
+                    }
+                    //Left collision
+                    if(playerBounds.left > wallBounds.left &&
+                            playerBounds.left + playerBounds.width > wallBounds.left + wallBounds.width &&
+                            playerBounds.top < wallBounds.top + wallBounds.height
+                            && playerBounds.top + playerBounds.height > wallBounds.top
+                            )
+                    {
+                        velocity.x =0.f;
+                        player.setPosition(wallBounds.left + wallBounds.width, playerBounds.top);
+
+                    }
+                }
+
+
+            }
+            player.move(velocity);
+            //Collision screen
+            //left collision
+            if(player.getPosition().x < 0.f)
+                player.setPosition(0.f, player.getPosition().y);
+            //Top collision
+            if(player.getPosition().y < 0.f)
+                player.setPosition(player.getPosition().x, 0.f);
+            //Right collision
+            if(player.getPosition().x + player.getGlobalBounds().width > 800)
+                player.setPosition(800 - player.getGlobalBounds().width, player.getPosition().y);
+            //bottom collision
+            if(player.getPosition().y + player.getGlobalBounds().height > 600)
+                player.setPosition(player.getPosition().x, 600 - player.getGlobalBounds().height);
+
+
+
+
 
         }
-        //Update model
-        guy.Update(1.0f/60.0f);
         // Clear screen
         window.clear();
         // Draw the sprite
         window.draw(grass);
-        window.draw(wall);
-       window.draw(wall1);
-           window.draw(wall2);
-               window.draw(wall3);
-        guy.Draw( window);
-        // Draw the string
+
+        for (auto&i : walls)
+        {
+            window.draw(i);
+        }
+
+        window.draw(player);
+
+
         // Update the window
         window.display();
     }
