@@ -19,11 +19,19 @@ int main()
     sf::Texture texture_wall;
     if(!texture_wall.loadFromFile("wall.png")) { return 1; }
     texture_wall.setRepeated(true);
+
+
     //Clock
     float dt;
     sf::Clock dt_clock;
+
+    const float gridSize = 50.f;
+
+    sf::Vector2f mousePosGrid;
     //  Walls
+
     std::vector<sf::RectangleShape> walls;
+
     sf::RectangleShape wall;
     wall.setTexture(&texture_wall);
     wall.setSize(sf::Vector2f(100,300));
@@ -31,8 +39,8 @@ int main()
 
     sf::RectangleShape wall1;
     wall.setTexture(&texture_wall);
-    wall.setSize(sf::Vector2f(100,300));
-    wall.setPosition(300,0);
+    wall.setSize(sf::Vector2f(2* gridSize,3* gridSize));
+    wall.setPosition(300,200);
 
 
     walls.push_back(wall);
@@ -42,7 +50,7 @@ int main()
 
     // Create the main window
     sf::RenderWindow window(sf::VideoMode(800, 600), "SFML window");
-    window.setFramerateLimit(120);
+    window.setFramerateLimit(30);
     sf::RectangleShape player;
     player.setTexture(&guy_texture);
     player.setSize(sf::Vector2f(43,69));
@@ -56,6 +64,9 @@ int main()
         dt = dt_clock.restart().asSeconds();
         // Process events
         sf::Event event;
+        mousePosGrid.x = sf::Mouse::getPosition(window).x/(int)gridSize;
+        mousePosGrid.y = sf::Mouse::getPosition(window).y/(int)gridSize;
+
         while (window.pollEvent(event))
         {
             // Close window: exit
@@ -83,10 +94,26 @@ int main()
             {
                 velocity.x += movementSpeed * dt ;
             }
+            //Add walls
+            if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
+            {
+                bool exists = false;
+                for(size_t i = 0; i < walls.size() && !exists; i++)
+                {
+                    if(walls[i].getPosition().x / (int)gridSize == mousePosGrid.x
+                            && walls[i].getPosition().y  / (int)gridSize ==  mousePosGrid.y)
+                    {
+                        exists=true;
+                    }
+                }
+                if(!exists)
+                {
+                    wall.setPosition(mousePosGrid.x * gridSize, mousePosGrid.y * gridSize);
+                    walls.push_back(wall);
+                }
+            }
 
             //colisions
-
-
 
             for (auto &wall : walls)
             {
@@ -107,10 +134,10 @@ int main()
                             )
                     {
                         velocity.y =0.f;
-                        player.setPosition(wallBounds.left, wallBounds.top - playerBounds.height );
+                        player.setPosition(playerBounds.left, wallBounds.top - playerBounds.height );
 
                     }
-                    //Topcollision
+                    //Top collision
                     if(playerBounds.top > wallBounds.top &&
                             playerBounds.top + playerBounds.height > wallBounds.top + wallBounds.height &&
                             playerBounds.left < wallBounds.left + wallBounds.width
@@ -118,7 +145,7 @@ int main()
                             )
                     {
                         velocity.y =0.f;
-                        player.setPosition(playerBounds.left, wallBounds.top + wallBounds.height );
+                        player.setPosition(playerBounds.left, wallBounds.top + wallBounds.height);
 
                     }
                     //Right collision
